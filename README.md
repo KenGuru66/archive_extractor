@@ -20,8 +20,8 @@ python script.py <archive_path> <extract_to>
 <extract_to>: Directory where the extracted files will be stored.
 
 For example:
-python script.py /path/to/archive.7z /path/to/destination/
-To display the help message:
+- python script.py /path/to/archive.7z /path/to/destination/
+- To display the help message:
 python script.py --help
 
 ## Requirements
@@ -30,7 +30,7 @@ rich library for better console output
 rarfile library for handling .rar archives
 
 You can install the required libraries using pip:
-pip install rich rarfile
+- pip install rich rarfile
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
