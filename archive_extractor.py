@@ -12,6 +12,8 @@ from rich.table import Table
 
 console = Console()
 
+failed_files = []
+
 def extract_7z(file_path, extract_to):
     start_time = time.time()
     try:
@@ -21,6 +23,7 @@ def extract_7z(file_path, extract_to):
         return True
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Error extracting {file_path} with 7z: {e}[/red]")
+        failed_files.append(file_path)
         return False
 
 def extract_zip(file_path, extract_to):
@@ -33,6 +36,7 @@ def extract_zip(file_path, extract_to):
         return True
     except Exception as e:
         console.print(f"[red]Error extracting {file_path} as zip: {e}[/red]")
+        failed_files.append(file_path)
         return False
 
 def extract_tar(file_path, extract_to):
@@ -43,8 +47,9 @@ def extract_tar(file_path, extract_to):
         elapsed_time = time.time() - start_time
         console.print(f"[green]Extracted {file_path} in {elapsed_time:.2f} seconds.[/green]")
         return True
-    except (tarfile.TarError, ValueError, PermissionError) as e:
+    except (tarfile.TarError, ValueError, PermissionError, EOFError) as e:
         console.print(f"[red]Error extracting {file_path} as tar: {e}[/red]")
+        failed_files.append(file_path)
         return False
 
 def extract_rar(file_path, extract_to):
@@ -57,6 +62,7 @@ def extract_rar(file_path, extract_to):
         return True
     except rarfile.Error as e:
         console.print(f"[red]Error extracting {file_path} as rar: {e}[/red]")
+        failed_files.append(file_path)
         try:
             # Attempt extraction with unrar if rarfile fails
             subprocess.check_call(['unrar', 'x', file_path, extract_to])
@@ -65,6 +71,7 @@ def extract_rar(file_path, extract_to):
             return True
         except subprocess.CalledProcessError as e:
             console.print(f"[red]Error extracting {file_path} with unrar: {e}[/red]")
+            failed_files.append(file_path)
             return False
 
 def identify_file_type(file_path):
@@ -90,9 +97,11 @@ def extract_archive(file_path, extract_to):
             return extract_rar(file_path, extract_to)
         else:
             console.print(f"[yellow]Unsupported file format: {file_path} ({file_type})[/yellow]")
+            failed_files.append(file_path)
             return False
     else:
         console.print(f"[red]Could not determine the file type for {file_path}[/red]")
+        failed_files.append(file_path)
         return False
 
 def extract_all_archives(root_dir):
@@ -181,6 +190,13 @@ def main():
     table.add_row("Failed extractions", str(stats['failed_extractions']))
 
     console.print(table)
+
+    # Log failed files
+    if failed_files:
+        console.print("[red]Failed to extract the following files:[/red]")
+        for failed_file in failed_files:
+            console.print(f"[red]- {failed_file}[/red]")
+
     elapsed_time = time.time() - start_time
     console.print(f"[green]Extraction complete in {elapsed_time:.2f} seconds.[/green]")
 
