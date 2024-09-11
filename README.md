@@ -32,5 +32,8 @@ rarfile library for handling .rar archives
 You can install the required libraries using pip:
 - pip install rich rarfile
 
+sudo apt update
+sudo apt install p7zip-full
+
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
