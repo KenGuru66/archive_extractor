@@ -105,11 +105,12 @@ def extract_archive(file_path, extract_to):
         return False
 
 def extract_all_archives(root_dir):
-    """Recursively extracts all archives in the given directory."""
+    """Рекурсивно извлекает все архивы в указанной директории."""
     total_files = 0
     total_dirs = 0
     successful_extractions = 0
     failed_extractions = 0
+    failed_files = []  # Список для хранения битых или проблемных файлов
 
     archives = []
     for root, dirs, files in os.walk(root_dir):
@@ -123,33 +124,49 @@ def extract_all_archives(root_dir):
                 archives.append((file_path, extract_dir))
 
     with ThreadPoolExecutor() as executor:
-        results = list(executor.map(lambda p: extract_archive(*p), archives))
+        results = []
+        for p in archives:
+            try:
+                result = executor.submit(extract_archive, *p).result()
+                results.append(result)
+            except Exception as e:
+                console.print(f"[red]Ошибка при обработке архива {p[0]}: {e}[/red]")
+                failed_files.append(p[0])  # Добавляем проблемный файл в список
 
     successful_extractions = sum(1 for result in results if result)
     failed_extractions = len(results) - successful_extractions
 
-    # Recursively extract nested archives
-    nested_stats = [extract_all_archives(os.path.splitext(file_path)[0]) for file_path, _ in archives]
-    for stats in nested_stats:
-        total_files += stats['total_files']
-        total_dirs += stats['total_dirs']
-        successful_extractions += stats['successful_extractions']
-        failed_extractions += stats['failed_extractions']
+    # Рекурсивно извлекаем вложенные архивы
+    for file_path, _ in archives:
+        nested_dir = os.path.splitext(file_path)[0]
+        if os.path.isdir(nested_dir):
+            try:
+                nested_stats = extract_all_archives(nested_dir)
+                total_files += nested_stats['total_files']
+                total_dirs += nested_stats['total_dirs']
+                successful_extractions += nested_stats['successful_extractions']
+                failed_extractions += nested_stats['failed_extractions']
+            except Exception as e:
+                console.print(f"[red]Ошибка при обработке вложенных архивов в {nested_dir}: {e}[/red]")
+                failed_files.append(nested_dir)
 
-    # Remove original archives after successful extraction
+    # Удаляем оригинальные архивы после успешной разархивации
     for file_path, _ in archives:
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
             except PermissionError as e:
-                console.print(f"[red]Error removing file {file_path}: {e}[/red]")
+                console.print(f"[red]Ошибка при удалении файла {file_path}: {e}[/red]")
 
+    # Возвращаем результаты
     return {
         'total_files': total_files,
         'total_dirs': total_dirs,
         'successful_extractions': successful_extractions,
-        'failed_extractions': failed_extractions
+        'failed_extractions': failed_extractions,
+        'failed_files': failed_files  # Возвращаем список битых файлов
     }
+
 
 def main():
     if len(sys.argv) != 3 or '--help' in sys.argv:
